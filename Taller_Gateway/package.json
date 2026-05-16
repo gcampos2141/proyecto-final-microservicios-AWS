@@ -1,0 +1,21 @@
+{
+  "name": "taller-gateway",
+  "version": "1.0.0",
+  "description": "Gateway de Microoservicios para un Amzon Lite - Api Gateway",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "deploy:dev": "serverless deploy --stage develop --aws-profile serverless_user_personal",
+    "remove:dev": "serverless remove --stage develop --aws-profile serverless_user_personal",
+    "deploy:prod": "serverless deploy --stage prod --aws-profile serverless_user_personal",
+    "remove:prod": "serverless remove --stage prod --aws-profile serverless_user_personal"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.161",
+    "@types/jsonwebtoken": "^9.0.10",
+    "aws-lambda": "^1.0.7",
+    "typescript": "^6.0.2"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.3"
+  }
+}
