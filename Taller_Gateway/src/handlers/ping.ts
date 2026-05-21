@@ -1,5 +1,5 @@
+// Lambda para responder a un ping, se puede usar para verificar que la lambda esta funcionando correctamente
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda"
-
 
 export async function ping(event:APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
     console.log('Evento desde una api', event);

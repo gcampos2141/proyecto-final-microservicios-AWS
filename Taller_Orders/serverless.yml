@@ -1,10 +1,16 @@
-# Desarrollado por: Gabriel Campos - 325844
+# =========================================================================
+# PROYECTO FINAL: Módulo de Órdenes (taller-orders)
+# FACULTAD DE INFORMÁTICA - UAQ
+# =========================================================================
+
 service: taller-orders
 frameworkVersion: "4"
 
+# Variables personalizadas del proyecto
 custom:
   ordersTableName: ${self:service}-${self:provider.stage}-orders
 
+# Configuración del proveedor AWS, incluyendo runtime, región, variables de entorno y configuración de API Gateway.
 provider:
   name: aws
   runtime: nodejs22.x
@@ -20,12 +26,14 @@ provider:
     restApiRootResourceId: ${cf:taller-gateway-${self:provider.stage}.MainRestApiRootResourceId}
       
   iamRoleStatements:
+    # Permisos de auditoría y logs en CloudWatch
     - Effect: Allow
       Action:
         - logs:CreateLogGroup
         - logs:CreateLogStream
         - logs:PutLogEvents
       Resource: "*"
+    # Permisos de lectura/escritura sobre la tabla de Órdenes y sus Índices (GSI)
     - Effect: Allow
       Action: 
         - dynamodb:GetItem
@@ -40,20 +48,25 @@ provider:
             - "/"
             - - Fn::GetAtt: [OrdersTable, Arn]
               - "index/*"
+    # Permiso de comunicación inter-microservicio (Invocación directa a módulo Productos)
     - Effect: Allow
       Action: 
         - lambda:InvokeFunction
       Resource:
         - Fn::Sub: "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:taller-${self:provider.stage}-Products-*"
 
+# =========================================================================
+# DECLARACIÓN DE FUNCIONES LAMBDA / ENDPOINTS
+# =========================================================================
 functions:
+  # Lambda para crear una orden, que se activa con solicitudes POST a la ruta /orders, y está protegida por un Authorizer personalizado que valida tokens JWT para asegurar que solo usuarios autenticados puedan crear órdenes.
   createOrders: 
     handler: src/handlers/createOrders.createOrders
     name: taller-${self:provider.stage}-Orders-Create
     events:
       - http:
           method: post
-          path: /orders/create
+          path: /orders
           cors:
             origin: "*"
             headers: 
@@ -66,6 +79,7 @@ functions:
             type: CUSTOM
             authorizerId: ${cf:taller-gateway-${self:provider.stage}.MainAuthorizerId}
 
+  # Lambda para obtener los detalles de una orden específica, que se activa con solicitudes GET a la ruta /orders/{id}, y también está protegida por el mismo Authorizer para garantizar que solo usuarios autenticados puedan acceder a la información de sus órdenes.
   getOrder: 
     handler: src/handlers/getOrder.getOrder
     name: taller-${self:provider.stage}-Orders-GetOrder
@@ -85,6 +99,7 @@ functions:
             type: CUSTOM
             authorizerId: ${cf:taller-gateway-${self:provider.stage}.MainAuthorizerId}
 
+  # Lambda para listar todas las órdenes de un usuario específico, que se activa con solicitudes GET a la ruta /orders/user/{userId}, y está protegida por el Authorizer para asegurar que los usuarios solo puedan acceder a sus propias órdenes.
   listOrdersbyUserId: 
     handler: src/handlers/listOrdersbyUserId.listOrdersbyUserId
     name: taller-${self:provider.stage}-Orders-ListByUser
@@ -104,6 +119,7 @@ functions:
             type: CUSTOM
             authorizerId: ${cf:taller-gateway-${self:provider.stage}.MainAuthorizerId}
 
+  # Lambda para cancelar una orden, que se activa con solicitudes POST a la ruta /orders/{id}/cancel, y está protegida por el Authorizer para garantizar que solo usuarios autenticados puedan cancelar sus órdenes.
   cancelOrder: 
     handler: src/handlers/cancelOrder.cancelOrder
     name: taller-${self:provider.stage}-Orders-Cancel
@@ -123,6 +139,7 @@ functions:
             type: CUSTOM
             authorizerId: ${cf:taller-gateway-${self:provider.stage}.MainAuthorizerId}
 
+  # Lambda para confirmar una orden, que se activa con solicitudes POST a la ruta /orders/{id}/confirm, y está protegida por el Authorizer para asegurar que solo usuarios autenticados puedan confirmar sus órdenes, lo que podría implicar la actualización del estado de la orden a "confirmada" en la base de datos.
   confirmOrder: 
     handler: src/handlers/confirmOrder.confirmOrder
     name: taller-${self:provider.stage}-Orders-Confirm
@@ -142,8 +159,29 @@ functions:
             type: CUSTOM
             authorizerId: ${cf:taller-gateway-${self:provider.stage}.MainAuthorizerId}
 
+# Lambda extra para verificar si un usuario ha comprado un producto, lo cual es necesario para permitirle crear una reseña del producto.
+  checkProductPurchased: 
+    handler: src/handlers/checkProductPurchased.checkProductPurchased
+    name: taller-${self:provider.stage}-Orders-CheckPurchased
+    events:
+      - http:
+          method: get
+          path: /orders/{id}/check-purchased
+          cors:
+            origin: "*"
+            headers: 
+                - Content-Type
+                - Authorization
+                - X-Api-Key
+                - X-Amz-Date
+                - X-Amz-Security-Token
+          authorizer:
+            type: CUSTOM
+            authorizerId: ${cf:taller-gateway-${self:provider.stage}.MainAuthorizerId}
 
-
+# =========================================================================
+# RECURSOS DE INFRAESTRUCTURA (CloudFormation / NoSQL Tables)
+# =========================================================================
 resources: 
   Resources:
     OrdersTable:

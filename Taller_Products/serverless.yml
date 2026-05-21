@@ -1,10 +1,16 @@
-# Desarrollado por: Gabriel Campos - 325844
+# =========================================================================
+# PROYECTO FINAL: Módulo de Productos (taller-products)
+# FACULTAD DE INFORMÁTICA - UAQ
+# =========================================================================
+
 service: taller-products
 frameworkVersion: "4"
 
+# Variables personalizadas del proyecto
 custom:
   productsTableName: ${self:service}-${self:provider.stage}-products
 
+# Configuración del proveedor AWS, incluyendo runtime, región, variables de entorno y configuración de API Gateway.
 provider:
   name: aws
   runtime: nodejs22.x
@@ -20,12 +26,14 @@ provider:
     restApiRootResourceId: ${cf:taller-gateway-${self:provider.stage}.MainRestApiRootResourceId}
       
   iamRoleStatements:
+    # Permisos de auditoría y logs en CloudWatch
     - Effect: Allow
       Action:
         - logs:CreateLogGroup
         - logs:CreateLogStream
         - logs:PutLogEvents
       Resource: "*"
+    # Permisos de lectura/escritura sobre la tabla de Productos y sus Índices (GSI)
     - Effect: Allow
       Action: 
         - dynamodb:GetItem
@@ -41,14 +49,18 @@ provider:
             - - Fn::GetAtt: [ProductsTable, Arn]
               - "index/*"
 
+# =========================================================================
+# DECLARACIÓN DE FUNCIONES LAMBDA / ENDPOINTS
+# =========================================================================
 functions:
+  # Lambda para crear un producto, que se activa con solicitudes POST a la ruta /products, y está protegida por un Authorizer personalizado que valida tokens JWT para asegurar que solo usuarios autenticados puedan crear productos.
   createProduct: 
     handler: src/handlers/createProducts.createProducts
     name: taller-${self:provider.stage}-Products-Create
     events:
       - http:
           method: post
-          path: /products/create
+          path: /products
           cors:
             origin: "*"
             headers: 
@@ -61,6 +73,7 @@ functions:
             type: CUSTOM
             authorizerId: ${cf:taller-gateway-${self:provider.stage}.MainAuthorizerId}
 
+  # Lambda para obtener un producto por su ID, que se activa con solicitudes GET a la ruta /products/{id}, y está protegida por un Authorizer personalizado que valida tokens JWT para asegurar que solo usuarios autenticados puedan acceder a los detalles de un producto específico.
   getProduct: 
     handler: src/handlers/getProduct.getProduct
     name: taller-${self:provider.stage}-Products-Get
@@ -77,6 +90,7 @@ functions:
                 - X-Amz-Date
                 - X-Amz-Security-Token
 
+  # Lambda para listar todos los productos disponibles, que se activa con solicitudes GET a la ruta /products, y está abierta al público sin necesidad de autenticación, permitiendo que cualquier usuario pueda ver el catálogo completo de productos.
   listAllProduct: 
       handler: src/handlers/listAllProducts.listAllProducts
       name: taller-${self:provider.stage}-Products-ListALLProducts
@@ -93,6 +107,7 @@ functions:
                   - X-Amz-Date
                   - X-Amz-Security-Token
 
+  # Lambda para listar productos por vendedor, que se activa con solicitudes GET a la ruta /products/users/{sellerId}, y está protegida por un Authorizer personalizado que valida tokens JWT para asegurar que solo usuarios autenticados puedan acceder a los productos de un vendedor específico.
   listProductsBySeller: 
     handler: src/handlers/listProductsBySeller.listProductsBySeller
     name: taller-${self:provider.stage}-Products-ListBySeller
@@ -126,6 +141,7 @@ functions:
                 - X-Amz-Date
                 - X-Amz-Security-Token
 
+  # Lambda para actualizar un producto, que se activa con solicitudes PUT a la ruta /products/{id}, y está protegida por un Authorizer personalizado que valida tokens JWT para asegurar que solo usuarios autenticados puedan modificar los detalles de un producto específico.
   updateProduct: 
     handler: src/handlers/updateProduct.updateProduct
     name: taller-${self:provider.stage}-Products-Update
@@ -145,7 +161,7 @@ functions:
             type: CUSTOM
             authorizerId: ${cf:taller-gateway-${self:provider.stage}.MainAuthorizerId}
 
-
+  # Lambda para eliminar un producto, que se activa con solicitudes DELETE a la ruta /products/{id}, y está protegida por un Authorizer personalizado que valida tokens JWT para asegurar que solo usuarios autenticados puedan eliminar un producto específico.
   deleteProduct: 
     handler: src/handlers/deleteProduct.deleteProduct
     name: taller-${self:provider.stage}-Products-Delete
@@ -165,10 +181,9 @@ functions:
             type: CUSTOM
             authorizerId: ${cf:taller-gateway-${self:provider.stage}.MainAuthorizerId}
 
-
-
-
-
+# =========================================================================
+# RECURSOS DE INFRAESTRUCTURA (CloudFormation / NoSQL Tables)
+# =========================================================================
 resources: 
   Resources:
     ProductsTable:

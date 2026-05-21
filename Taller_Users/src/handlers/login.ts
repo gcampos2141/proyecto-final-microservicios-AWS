@@ -11,13 +11,19 @@ import { withCors } from "../common/cors"
 const USERS_TABLE = process.env.USERS_TABLE
 const REFRESH_TOKEN_TABLE = process.env.REFRESH_TOKEN_TABLE
 
+/**
+ * @ENDPOINT POST /login
+ * @DESCRIPTION Permite a un usuario iniciar sesión. Recibe email y password en el body. Valida que el email exista en la base de datos y que la contraseña sea correcta. 
+ * Si las credenciales son válidas, genera un access token JWT con la información del usuario (userId, email, role) y un refresh token, guarda el refresh token en la base 
+ * de datos con una expiración de 7 días y retorna ambos tokens. Si las credenciales no son válidas, retorna un error 401.
+ */
 export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayProxyResult> {
     try {
         const body = JSON.parse(event.body ?? "{}");
         const {email, password} = body;
     
         if ( !email || !password ) {
-            return badRequest("Email y password son requeridos")
+            return badRequest("Email y password son requeridos.")
         }
     
         const result = await dynamo.send(
@@ -32,13 +38,13 @@ export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayP
         const user = result.Items?.[0];
     
         if (!user) {
-            return unauthorized("Invalid credentials")
+            return unauthorized("Invalid credentials.")
         }
     
         const validPassword = await bcrypt.compare(password, user.password)
     
         if (!validPassword) {
-            return unauthorized("Invalid credentials")
+            return unauthorized("Invalid credentials.")
         }
     
         const payload = {
@@ -67,7 +73,7 @@ export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayP
         
     } catch (error) {
         console.error("Error al iniciar sesión", error)
-        return internalError("Hubo un error al iniciar sesión")
+        return internalError("Hubo un error al iniciar sesión.")
 
     }        
 

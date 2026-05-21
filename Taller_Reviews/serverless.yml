@@ -1,0 +1,152 @@
+# =========================================================================
+# PROYECTO FINAL: Módulo de Reseñas (taller-reviews)
+# FACULTAD DE INFORMÁTICA - UAQ
+# =========================================================================
+
+service: taller-reviews
+frameworkVersion: "4"
+
+# Variables personalizadas del proyecto
+custom:
+  reviewsTableName: ${self:service}-${self:provider.stage}-reviews
+
+# Configuración del proveedor AWS, incluyendo runtime, región, variables de entorno y configuración de API Gateway.
+provider:
+  name: aws
+  runtime: nodejs22.x
+  stage: ${opt:stage, 'local'}
+  region: us-east-1
+  environment:
+    STAGE: ${self:provider.stage}
+    CORS_ORIGIN: ${file(./config/config-${self:provider.stage}.json):CORS_ORIGIN}
+    REVIEWS_TABLE: ${self:custom.reviewsTableName}
+
+  apiGateway:
+    restApiId: ${cf:taller-gateway-${self:provider.stage}.MainRestApiId}
+    restApiRootResourceId: ${cf:taller-gateway-${self:provider.stage}.MainRestApiRootResourceId}
+      
+  iamRoleStatements:
+    # Permisos de auditoría y logs en CloudWatch
+    - Effect: Allow
+      Action:
+        - logs:CreateLogGroup
+        - logs:CreateLogStream
+        - logs:PutLogEvents
+      Resource: "*"
+    # Permisos de lectura/escritura sobre la tabla de Productos y sus Índices (GSI)
+    - Effect: Allow
+      Action: 
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:Query
+      Resource:
+        - Fn::GetAtt: [ReviewsTable, Arn]
+        - Fn::Join:
+            - "/"
+            - - Fn::GetAtt: [ReviewsTable, Arn]
+              - "index/*"
+    - Effect: Allow
+    # Permiso de comunicación inter-microservicio (Invocación directa a módulo Productos y Órdenes)
+      Action: 
+        - lambda:InvokeFunction
+      Resource:
+        - Fn::Sub: "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:taller-${self:provider.stage}-Products-*"
+        - Fn::Sub: "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:taller-${self:provider.stage}-Orders-*"
+
+# =========================================================================
+# DECLARACIÓN DE FUNCIONES LAMBDA / ENDPOINTS
+# =========================================================================
+functions:
+  # Lambda para crear una reseña, que se activa con solicitudes POST a la ruta /reviews/{id}, y está protegida por un Authorizer personalizado que valida tokens JWT para asegurar que solo usuarios autenticados puedan crear reseñas para un producto específico.
+  createReview: 
+    handler: src/handlers/createReview.createReview
+    name: taller-${self:provider.stage}-Reviews-Create
+    events:
+      - http:
+          method: post
+          path: /reviews/{id}
+          cors:
+            origin: "*"
+            headers: 
+                - Content-Type
+                - Authorization
+                - X-Api-Key
+                - X-Amz-Date
+                - X-Amz-Security-Token
+          authorizer:
+            type: CUSTOM
+            authorizerId: ${cf:taller-gateway-${self:provider.stage}.MainAuthorizerId}
+
+  # Lambda para listar todas las reseñas de un producto, que se activa con solicitudes GET a la ruta /reviews/{id}, y está abierta al público sin necesidad de autenticación, permitiendo que cualquier usuario pueda ver las reseñas asociadas a un producto específico.
+  listAllReviewsfromProduct:
+    handler: src/handlers/listAllfromProduct.listAllfromProduct
+    name: taller-${self:provider.stage}-Reviews-ListAllFromProduct
+    events:
+      - http:
+          method: get
+          path: /reviews/{id}
+          cors:
+            origin: "*"
+            headers: 
+                - Content-Type
+                - Authorization
+                - X-Api-Key
+                - X-Amz-Date
+                - X-Amz-Security-Token
+
+  # Lambda para eliminar una reseña, que se activa con solicitudes DELETE a la ruta /reviews/{id}, y está protegida por un Authorizer personalizado que valida tokens JWT para asegurar que solo usuarios autenticados puedan eliminar una reseña específica, posiblemente restringiendo esta acción solo al autor de la reseña o a administradores.
+  deleteReview:
+    handler: src/handlers/deleteReview.deleteReview
+    name: taller-${self:provider.stage}-Reviews-Delete
+    events:
+      - http:
+          method: delete
+          path: /reviews/{id}
+          cors:
+            origin: "*"
+            headers: 
+                - Content-Type
+                - Authorization
+                - X-Api-Key
+                - X-Amz-Date
+                - X-Amz-Security-Token
+          authorizer:
+            type: CUSTOM
+            authorizerId: ${cf:taller-gateway-${self:provider.stage}.MainAuthorizerId}
+
+# =========================================================================
+# RECURSOS DE INFRAESTRUCTURA (CloudFormation / NoSQL Tables)
+# =========================================================================
+resources: 
+  Resources:
+    ReviewsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.reviewsTableName}
+        BillingMode: PAY_PER_REQUEST
+        
+        # Solo definimos los atributos que se usan como HASH o RANGE en la tabla o índices
+        AttributeDefinitions:
+          - AttributeName: reviewId
+            AttributeType: S
+          - AttributeName: productId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        
+        KeySchema: 
+          - AttributeName: reviewId
+            KeyType: HASH
+        
+        GlobalSecondaryIndexes:
+          # Este índice te permitirá buscar reseñas de un producto ordenadas de la más nueva a la más vieja
+          - IndexName: ProductReviewIndex
+            KeySchema:
+              - AttributeName: productId
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL

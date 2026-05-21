@@ -1,3 +1,4 @@
+// Definición de la interfaz para un producto
 export interface Product{
     productId: string,
     sellerId: string,

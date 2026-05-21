@@ -7,11 +7,15 @@ import { invokeLambda, productFn } from "../lib/lambdaInvoke"
 import { withCors } from "../common/cors"
 
 const ORDERS_TABLE = process.env.ORDERS_TABLE
-
+/**
+ * @ENDPOINT POST /orders/{id}/cancel
+ * @DESCRIPTION Permite cancelar una orden existente. Solo el comprador que realizó la orden o un vendedor que tenga productos en la orden 
+ * pueden cancelarla. Cambia el estado de la orden a "canceled" y actualiza la fecha de actualización.
+ */
 async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
     try {
         const orderId = event.pathParameters?.id;
-        if (!orderId) return notFound("El pedido no fue encontrado");
+        if (!orderId) return notFound("El pedido no fue encontrado.");
 
         const callerId = event.requestContext.authorizer?.userId as string;
 
@@ -24,9 +28,15 @@ async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResu
         const order = existing.Item as Order;
 
         if (order.status === "canceled") {
-            return badRequest("Esta orden ya fue cancelada");
+            return badRequest("Esta orden ya fue cancelada.");
         }
 
+        // =========================================================================
+        // VALIDACIÓN DE ROLES (REGLA DE NEGOCIO EN COMMERCE)
+        // El comprador puede cancelar directo. Si no es el comprador, se consulta 
+        // el microservicio de Productos para verificar si el llamante es un vendedor 
+        // afectado.
+        // =========================================================================
         const isBuyer = order.userId === callerId;
 
         let sellerProductIds = new Set<string>();
@@ -44,7 +54,7 @@ async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResu
         const isSeller = order.items.some((i) => sellerProductIds.has(i.productId));
 
         if (!isBuyer && !isSeller) {
-            return forbidden("Solo puedes cancelar una orden si eres el comprador o un vendedor con productos en esta orden");
+            return forbidden("Solo puedes cancelar una orden si eres el comprador o un vendedor con productos en esta orden.");
         }
 
         await dynamo.send(
@@ -60,11 +70,11 @@ async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResu
             })
         );
 
-        return ok({ message: "Orden cancelada" });
+        return ok({ message: "Orden cancelada." });
 
     } catch (error) {
         console.error("Error al cancelar el pedido", error);
-        return internalError("Error al cancelar el pedido");
+        return internalError("Error al cancelar el pedido.");
     }
 }
 

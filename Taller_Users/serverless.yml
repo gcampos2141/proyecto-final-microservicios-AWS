@@ -1,11 +1,17 @@
-# Desarrollado por: Gabriel Campos - 325844
+# =========================================================================
+# PROYECTO FINAL: Módulo de Usuarios (taller-users)
+# FACULTAD DE INFORMÁTICA - UAQ
+# =========================================================================
+
 service: taller-users
 frameworkVersion: "4"
 
+# Variables personalizadas del proyecto
 custom:
   usersTableName: ${self:service}-${self:provider.stage}-users
   refreshTokensTableName: ${self:service}-${self:provider.stage}-refresh-tokens
 
+# Configuración del proveedor AWS, incluyendo runtime, región, variables de entorno y configuración de API Gateway.
 provider:
   name: aws
   runtime: nodejs22.x
@@ -25,12 +31,14 @@ provider:
     restApiRootResourceId: ${cf:taller-gateway-${self:provider.stage}.MainRestApiRootResourceId}
       
   iamRoleStatements:
+    # Permisos de auditoría y logs en CloudWatch
     - Effect: Allow
       Action:
         - logs:CreateLogGroup
         - logs:CreateLogStream
         - logs:PutLogEvents
       Resource: "*"
+    # Permisos de lectura/escritura sobre la tabla de Productos y sus Índices (GSI)
     - Effect: Allow
       Action: 
         - dynamodb:GetItem
@@ -46,7 +54,11 @@ provider:
               - "index/*"
         - Fn::GetAtt: [RefreshTokensTable, Arn]
 
+# =========================================================================
+# DECLARACIÓN DE FUNCIONES LAMBDA / ENDPOINTS
+# =========================================================================
 functions:
+  # Lambda para registrar un nuevo usuario, que se activa con solicitudes POST a la ruta /users/register, y permite a los usuarios crear una cuenta proporcionando su información básica (nombre, correo electrónico, contraseña), con validaciones para asegurar que el correo no esté ya registrado y que la contraseña cumpla con ciertos criterios de seguridad.
   register: 
     handler: src/handlers/register.register
     name: taller-${self:provider.stage}-Users-Register
@@ -63,8 +75,10 @@ functions:
                 - X-Amz-Date
                 - X-Amz-Security-Token
 
+  # Lambda para iniciar sesión, que se activa con solicitudes POST a la ruta /users/login, y permite a los usuarios autenticarse proporcionando su correo electrónico y contraseña, validando las credenciales contra la base de datos, y generando un token JWT de acceso junto con un token de refresco para mantener la sesión activa.
   login:
     handler: src/handlers/login.login
+    name: taller-${self:provider.stage}-Users-Login
     events:
       - http:
           method: post
@@ -78,8 +92,10 @@ functions:
                 - X-Amz-Date
                 - X-Amz-Security-Token
 
+  # Lambda para refrescar tokens, que se activa con solicitudes POST a la ruta /users/refresh-token, y permite a los usuarios obtener un nuevo token JWT de acceso utilizando un token de refresco válido, asegurando que el token de refresco esté registrado en la base de datos y no haya expirado antes de emitir un nuevo token de acceso.
   getUser:
     handler: src/handlers/getUser.getUser
+    name: taller-${self:provider.stage}-Users-GetUser
     events:
       - http:
           method: get
@@ -96,8 +112,10 @@ functions:
             type: CUSTOM
             authorizerId: ${cf:taller-gateway-${self:provider.stage}.MainAuthorizerId}
 
+  # Lambda para actualizar la información de un usuario, que se activa con solicitudes PUT a la ruta /users/{id}, y permite a los usuarios autenticados actualizar su información personal (nombre, correo electrónico, contraseña), con validaciones para asegurar que solo el usuario propietario de la cuenta pueda realizar cambios, y que los datos actualizados cumplan con los criterios de seguridad y formato.
   updateUser:
     handler: src/handlers/updateUser.updateUser
+    name: taller-${self:provider.stage}-Users-Update
     events:
       - http:
           method: put
@@ -114,8 +132,10 @@ functions:
             type: CUSTOM
             authorizerId: ${cf:taller-gateway-${self:provider.stage}.MainAuthorizerId}
 
+  # Lambda para eliminar un usuario, que se activa con solicitudes DELETE a la ruta /users/{id}, y permite a los usuarios autenticados eliminar su cuenta, con validaciones para asegurar que solo el usuario propietario de la cuenta pueda realizar esta acción.
   deleteUser:
     handler: src/handlers/deleteUser.deleteUser
+    name: taller-${self:provider.stage}-Users-Delete
     events:
       - http:
           method: delete
@@ -132,7 +152,9 @@ functions:
             type: CUSTOM
             authorizerId: ${cf:taller-gateway-${self:provider.stage}.MainAuthorizerId}
 
-
+# =========================================================================
+# RECURSOS DE INFRAESTRUCTURA (CloudFormation / NoSQL Tables)
+# =========================================================================
 resources: 
   Resources:
     UsersTable:

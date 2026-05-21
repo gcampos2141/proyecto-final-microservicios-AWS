@@ -8,6 +8,12 @@ import { withCors } from "../common/cors"
 
 const PRODUCTS_TABLE = process.env.PRODUCTS_TABLE;
 
+/**
+ * @ENDPOINT POST /products
+ * @DESCRIPTION Permite crear un nuevo producto. Recibe los datos del producto en el cuerpo de la solicitud. El sellerId se obtiene del authorizer.
+ * Valida que los datos del producto sean válidos y que el usuario sea un vendedor. Si todo es válido, crea el producto y lo guarda en la base de datos.
+ */
+
 export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayProxyResult> {
     try {
 
@@ -15,22 +21,28 @@ export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayP
         const callerRole = event.requestContext.authorizer?.role;
 
         if (callerRole !== "seller") {
-            return forbidden("Solo los vendedores pueden crear un producto")
+            return forbidden("Solo los vendedores pueden crear un producto.")
         }
 
         const body =  JSON.parse(event.body ?? "{}")
         const { name, description, price, stock } = body;
         
+        // --------------------------------------------------------------
+        //  Se validan los datos de entrada para asegurarnos que el producto
+        //  tenga toda la información necesaria y que esta sea válida.
+        //  Para posteriormente si se pasann las validaciones, 
+        //  se crea el producto y se guarda en la base de datos.
+        // --------------------------------------------------------------
         if (!name || !description || !price || !stock ) {
-            return badRequest("Se requieren de todos los elementos para poder crear el producto")
+            return badRequest("Se requieren de todos los elementos para poder crear el producto.")
         }
 
         if (typeof price !==  "number" || price < 0) {
-            return badRequest("El precio tiene que ser un número mayor a 0");
+            return badRequest("El precio tiene que ser un número mayor a 0.");
         }
         
         if (typeof stock !==  "number" || stock < 0 || !Number.isInteger(stock)) {
-            return badRequest("El stock tiene que ser un número mayor a 0 y debe ser un número");
+            return badRequest("El stock tiene que ser un número mayor a 0 y debe ser un número.");
         }
 
         const now  = new Date().toISOString()
@@ -60,7 +72,7 @@ export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayP
       console.error("Error al crear el producto", error)
       return{
         statusCode: 500,
-        body: JSON.stringify({message: "Hubo un error al crear el producto"})
+        body: JSON.stringify({message: "Hubo un error al crear el producto."})
       }
     }
 }

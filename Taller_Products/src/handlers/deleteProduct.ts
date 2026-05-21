@@ -6,11 +6,18 @@ import { withCors } from "../common/cors"
 
 const PRODUCTS_TABLE = process.env.PRODUCTS_TABLE
 
+/**
+ * @ENDPOINT DELETE /products/{id}
+ * @DESCRIPTION Permite eliminar un producto existente. El producto a eliminar se identifica por su ID, que se recibe como parámetro en la ruta. 
+ * Solo el vendedor que creó el producto puede eliminarlo, por lo que se valida que el userId del authorizer coincida con el sellerId del producto. 
+ * Si el producto no existe o el usuario no tiene permisos para eliminarlo, se retorna un error adecuado. Si la eliminación es exitosa, se retorna 
+ * un mensaje de confirmación.
+ */
 export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayProxyResult> {
     try {
         const productId = event.pathParameters?.id;
         if (!productId) {
-            return notFound('El producto no existe');
+            return notFound('El producto no existe.');
         }
 
         const callerId = event.requestContext.authorizer?.userId;
@@ -23,11 +30,11 @@ export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayP
         )
 
         if (!existing.Item) {
-            return notFound("El producto no fue encontrado en la base de datos")
+            return notFound("El producto no fue encontrado en la base de datos.")
         }
 
         if (existing.Item.sellerId !== callerId) {
-            return forbidden("Solo puedes borrar el producto de tu propia autoria")   
+            return forbidden("Solo puedes borrar el producto de tu propia autoria.")   
         }
 
         await dynamo.send(
@@ -37,11 +44,11 @@ export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayP
             })
         )
 
-        return ok({ messsage: "Producto Eliminado Existosamente" })
+        return ok({ message: "Producto Eliminado Existosamente." })
         
     } catch (error) {
         console.error("Error al tratar de eliminar el producto", error)
-        return internalError("Error al tratar de eliminar el producto")
+        return internalError("Error al tratar de eliminar el producto.")
 
     }        
 

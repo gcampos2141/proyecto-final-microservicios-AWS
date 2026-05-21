@@ -9,13 +9,19 @@ import { withCors } from "../common/cors"
 
 const USERS_TABLE = process.env.USERS_TABLE
 
+/**
+ * @ENDPOINT POST /register
+ * @DESCRIPTION Permite registrar un nuevo usuario. Recibe email, password, name y role (opcional, por defecto "buyer") en el body. Valida que el email no exista ya en la base de datos. 
+ * Si el email ya existe, retorna un error 400. Si el email no existe, hashea la contraseña usando bcrypt, genera un userId único, guarda el nuevo usuario en la base de datos y 
+ * retorna la información del usuario (excepto la contraseña).
+ */
 export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayProxyResult> {
     try {
         const body =  JSON.parse(event.body ?? "{}")
         const {email, password, name, role = "buyer" } = body 
 
         if (!email || !password || !name) {
-            return badRequest("El Email, password o el nombre son requeridos")
+            return badRequest("El Email, password o el nombre son requeridos.")
         }
 
         const existing = await dynamo.send(
@@ -30,7 +36,7 @@ export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayP
         console.log('usuario existe: ', existing);
 
         if (existing.Items && existing.Items.length > 0) {
-            return badRequest("Email ya se encontraba registrado")
+            return badRequest("Email ya se encontraba registrado.")
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -60,7 +66,7 @@ export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayP
       console.error("Error al registrar el usuario", error)
       return{
         statusCode: 500,
-        body: JSON.stringify({message: "Hubo un error al registrar al usuario"})
+        body: JSON.stringify({message: "Hubo un error al registrar al usuario."})
       }
     }
 }

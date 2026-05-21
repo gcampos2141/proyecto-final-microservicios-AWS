@@ -6,6 +6,12 @@ import { withCors } from "../common/cors"
 
 const PRODUCTS_TABLE = process.env.PRODUCTS_TABLE
 
+/**
+ * @ENDPOINT GET /products/seller/{sellerId}
+ * @DESCRIPTION Permite obtener una lista de productos asociados a un vendedor específico. El vendedor se identifica por su ID, que se recibe como parámetro en la ruta. 
+ * Retorna un arreglo de objetos, donde cada objeto representa un producto con sus detalles (productId, name, price, stock, sellerId). Si el vendedor no tiene productos 
+ * disponibles, se retorna un arreglo vacío.
+ */
 export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayProxyResult> {
     try {
         const sellerId = event.pathParameters?.sellerId;
@@ -23,14 +29,14 @@ export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayP
         )
 
         if (!result.Items) {
-            return notFound("Productos no encontrados en la base de datos")
+            return notFound("Productos no encontrados en la base de datos.")
         }
 
         return ok({ products: result.Items ?? [] })
         
     } catch (error) {
         console.error(`Error al obtener productos para sellerId ${event.pathParameters?.sellerId}:`, error)
-        return internalError("Error al obtener todos los productos")
+        return internalError("Error al obtener todos los productos.")
 
     }        
 

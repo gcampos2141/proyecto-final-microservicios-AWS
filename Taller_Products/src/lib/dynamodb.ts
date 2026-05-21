@@ -1,3 +1,4 @@
+// Archivo para configurar el cliente de DynamoDB y la instancia de DynamoDB Document Client.
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb"
 import { DynamoDBDocumentClient} from "@aws-sdk/lib-dynamodb"
 

@@ -1,3 +1,4 @@
+// Archivo para manejar la generación y verificación de tokens JWT para autenticación y autorización en el microservicio de usuarios.
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET!;

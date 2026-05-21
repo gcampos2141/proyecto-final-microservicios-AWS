@@ -6,6 +6,11 @@ import { withCors } from "../common/cors"
 
 const ORDERS_TABLE = process.env.ORDERS_TABLE
 
+/**
+ * @ENDPOINT GET /orders/user/{userId}
+ * @DESCRIPTION Obtiene todas las órdenes de un usuario específico, validando que el usuario autenticado (callerId) 
+ * sea el mismo que el userId en la ruta para garantizar que solo puedan acceder a sus propias órdenes.
+ */
 export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayProxyResult> {
     try {
         const userId = event.pathParameters?.userId;
@@ -14,7 +19,7 @@ export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayP
         console.log(`Obteniendo ordenes para userId ${userId} por callerId ${callerId}`)
 
         if (!userId) {
-            return notFound('El usuario no fue encontrado');
+            return notFound('El usuario no fue encontrado.');
         }
         if (userId !== callerId) {
             return forbidden("Solo puedes verificar las ordenes de tu autoría.")
@@ -32,14 +37,14 @@ export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayP
         )
 
         if (!result.Items) {
-            return notFound("Ordenes no encontradas en la base de datos")
+            return notFound("Ordenes no encontradas en la base de datos.")
         }
 
         return ok({ orders: result.Items ?? [] })
         
     } catch (error) {
         console.error(`Error al obtener ordenes para userId ${event.pathParameters?.userId}:`, error)
-        return internalError("Error al obtener todas las ordenes")
+        return internalError("Error al obtener todas las ordenes.")
 
     }        
 

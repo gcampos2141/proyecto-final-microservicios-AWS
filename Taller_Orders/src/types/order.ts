@@ -1,3 +1,4 @@
+// Archivo encargado de definir las interfaces y tipos relacionados con las órdenes en el sistema, incluyendo la estructura de los items de una orden y la propia orden, con sus propiedades y estados posibles.
 export interface OrderItem{
     productId: string,
     quantity: number,

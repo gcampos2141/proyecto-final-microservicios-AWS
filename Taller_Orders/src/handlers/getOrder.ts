@@ -6,11 +6,15 @@ import { withCors } from "../common/cors"
 
 const ORDERS_TABLE = process.env.ORDERS_TABLE
 
+/**
+ * @ENDPOINT GET /orders/{id}
+ * @DESCRIPTION Obtiene los detalles de una orden específica por su ID, asegurándose de que el usuario autenticado sea el propietario de la orden.
+ */
 export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayProxyResult> {
     try {
         const orderId = event.pathParameters?.id;
         if (!orderId) {
-            return notFound('El pedido no fue encontrado');
+            return notFound('El pedido no fue encontrado.');
         }
 
         const callerId = event.requestContext.authorizer?.userId as string;
@@ -28,14 +32,14 @@ export async function handler(event: APIGatewayProxyEvent) : Promise<APIGatewayP
         }
 
         if (result.Item.userId !== callerId) {
-            return forbidden("Solo puedes verificar las ordenes que son de tu autoría")
+            return forbidden("Solo puedes verificar las ordenes que son de tu autoría.")
         }
 
         return ok({Order: result.Item})
         
     } catch (error) {
         console.error("Error al obtener el pedido", error)
-        return internalError("Error al obtener el pedido")
+        return internalError("Error al obtener el pedido.")
 
     }        
 

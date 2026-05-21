@@ -1,3 +1,4 @@
+// Archivo para definir funciones de respuesta HTTP estándar para las funciones Lambda
 import { APIGatewayProxyResult } from "aws-lambda";
 
 export const ok = (data: unknown): APIGatewayProxyResult =>({

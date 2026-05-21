@@ -1,3 +1,5 @@
+// Archivo de configuración de TypeScript para el proyecto del API Gateway, definiendo las opciones de compilación, incluyendo el módulo, target, tipos, 
+// y configuraciones de salida y raíz para organizar el código fuente y los archivos compilados.
 {
   "compilerOptions": {
     "module": "nodenext",

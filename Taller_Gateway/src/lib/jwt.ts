@@ -1,3 +1,4 @@
+// Encargado de generar y verificar los tokens JWT para la autenticación de usuarios.
 import jwt from "jsonwebtoken"
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "local-secret"

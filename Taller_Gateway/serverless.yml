@@ -1,7 +1,12 @@
-# Desarrollado por: Gabriel Campos - 325844
+# =========================================================================
+# PROYECTO FINAL: Módulo de Gateway (taller-gateway)
+# FACULTAD DE INFORMÁTICA - UAQ
+# =========================================================================
+
 service: taller-gateway
 frameworkVersion: "4"
 
+# Configuración del proveedor AWS, incluyendo runtime, región, variables de entorno y configuración de API Gateway.
 provider:
   name: aws
   runtime: nodejs22.x
@@ -24,6 +29,7 @@ provider:
       - ${self:provider.stage}-AmazonLite-DefaultKey
 
   iamRoleStatements:
+    # Permisos de auditoría y logs en CloudWatch
     - Effect: Allow
       Action:
         - logs:CreateLogGroup
@@ -31,7 +37,11 @@ provider:
         - logs:PutLogEvents
       Resource: "*"
 
+# =========================================================================
+# DECLARACIÓN DE FUNCIONES LAMBDA / ENDPOINTS
+# =========================================================================
 functions:
+# Lambda de prueba para verificar el funcionamiento del API Gateway, respondiendo a solicitudes GET en la ruta /gateway/ping.
   ping:
     handler: src/handlers/ping.ping
     name: taller-${self:provider.stage}-Gateway-Ping
@@ -47,13 +57,17 @@ functions:
               - X-Api-Key
               - X-Amz-Date
               - X-Amz-Security-Token
+# Lambda que actúa como Authorizer para validar tokens JWT en las solicitudes entrantes, asegurando que solo los clientes autorizados puedan acceder a los endpoints protegidos del API Gateway.
   authorizer:
     handler: src/handlers/authorizer.authorizer
     name: taller-${self:provider.stage}-Authorizer
 
+# =========================================================================
+# RECURSOS DE INFRAESTRUCTURA (CloudFormation / NoSQL Tables)
+# =========================================================================
 resources:
   Resources:
-  
+  # Definición del Authorizer en API Gateway, especificando el tipo de autenticación, la fuente del token y la función Lambda que se encargará de validar los tokens JWT.
     MainAuthorizer:
       Type: AWS::ApiGateway::Authorizer
       Properties:
@@ -65,6 +79,7 @@ resources:
         AuthorizerUri:
           Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthorizerLambdaFunction.Arn}/invocations
 
+    # Permisos para que API Gateway pueda invocar la función Lambda del Authorizer, asegurando que el Authorizer pueda ser utilizado para validar las solicitudes entrantes al API Gateway.
     AuthorizerInvokePermission:
       Type: AWS::Lambda::Permission
       Properties:
@@ -74,7 +89,8 @@ resources:
         Principal: apigateway.amazonaws.com
         SourceArn:
           Fn::Sub: arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/authorizers/*
-
+  
+    # Configuraciones de respuestas personalizadas para el API Gateway, manejando errores comunes como Unauthorized (401), Access Denied (403) y errores genéricos de cliente (4XX) y servidor (5XX), incluyendo los encabezados CORS necesarios para permitir solicitudes desde cualquier origen.
     GatewayResponseUnauthorized:
       Type: AWS::ApiGateway::GatewayResponse
       Properties:
@@ -113,18 +129,21 @@ resources:
           gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
           gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type, Authorization, X-Api-Key, X-Amz-Date, X-Amz-Security-Token'"
 
+  # Salidas que exportan el ID del API Gateway, el ID del recurso raíz y el ID del Authorizer para su uso en otros servicios o stacks.
   Outputs:
     MainRestApiId:
       Value: { Ref: ApiGatewayRestApi }
       Export: 
         Name: ${self:service}-${self:provider.stage}-MainRestApiId 
-
+    
+    # Exporta el ID del recurso raíz del API Gateway, que es necesario para configurar las rutas y métodos en otros servicios que se integren con este API Gateway, como el servicio de productos.
     MainRestApiRootResourceId:
       Value:
         Fn::GetAtt: [ApiGatewayRestApi, RootResourceId]
       Export: 
         Name: ${self:service}-${self:provider.stage}-MainRestApiRootResourceId
 
+    # Exporta el ID del Authorizer configurado en este API Gateway, lo que permite que otros servicios puedan referenciar este Authorizer para proteger sus endpoints utilizando la autenticación basada en tokens JWT.
     MainAuthorizerId:
       Value: { Ref: MainAuthorizer }
       Export: 

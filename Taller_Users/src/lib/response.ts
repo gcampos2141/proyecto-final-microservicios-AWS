@@ -1,3 +1,4 @@
+// Archivo para configurar el cliente de DynamoDB y la instancia de DynamoDB Document Client.
 import { APIGatewayProxyResult } from "aws-lambda";
 
 export const ok = (data: unknown): APIGatewayProxyResult =>({

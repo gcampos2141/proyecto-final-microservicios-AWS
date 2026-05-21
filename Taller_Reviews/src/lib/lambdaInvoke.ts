@@ -42,3 +42,5 @@ export async function invokeLambda<T = unknown> (
 }
 
 export const productFn = (name: string) => `taller-${STAGE}-Products-${name}`
+
+export const ordersFn = (name: string) => `taller-${STAGE}-Orders-${name}`
