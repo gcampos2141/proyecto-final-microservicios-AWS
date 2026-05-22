@@ -1,5 +1,8 @@
 # 🛒 AmazonLite — Proyecto Final: Microservicios en AWS
 **Facultad de Informática · UAQ · Taller de Desarrollo de Microservicios en AWS**  
+**Desarrollado por:** 
+- *Gabriel Martín Campos Aguilar — 325844*
+- *Francisco Enrique Figueroa Hernandez — 315233*
 
 ---
 
@@ -87,7 +90,7 @@ El Lambda Authorizer (`taller-{stage}-Authorizer`) valida el token en cada reque
 {
   "email": "usuario@ejemplo.com",
   "password": "MiPassword123",
-  "name": "Gabriel Campos",
+  "name": "Usuario",
   "role": "buyer"       // "buyer" | "seller" (default: "buyer")
 }
 
@@ -96,7 +99,7 @@ El Lambda Authorizer (`taller-{stage}-Authorizer`) valida el token en cada reque
   "userPublic": {
     "userId": "uuid",
     "email": "usuario@ejemplo.com",
-    "name": "Gabriel Campos",
+    "name": "Usuario",
     "role": "buyer",
     "createdAt": "2024-01-01T00:00:00.000Z",
     "updatedAt": "2024-01-01T00:00:00.000Z"
